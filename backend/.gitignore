@@ -1,0 +1,7 @@
+.air.toml
+
+.env
+
+*.db
+
+tmp

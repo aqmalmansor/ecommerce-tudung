@@ -64,7 +64,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Email:    req.Email,
 		Password: string(hashedPassword),
 		Name:     req.Name,
-		Role:     enums.User.String(),
+		Role:     enums.Client.String(),
 	}
 
 	if err := h.DB.Create(&user).Error; err != nil {

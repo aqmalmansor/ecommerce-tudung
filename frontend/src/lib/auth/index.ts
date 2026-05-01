@@ -57,7 +57,7 @@ export const authOptions = {
 
         const authResult = await authenticateUser(
           credentials.email.toString(),
-          credentials.password.toString()
+          credentials.password.toString(),
         );
 
         if (!authResult) return null;
@@ -84,6 +84,7 @@ export const authOptions = {
         DEBUG.JWT_INITIAL_TOKEN(token, user);
         const newToken = {
           ...token,
+          id: user.id,
           role: user.role,
           email: user.email,
           name: user.name,

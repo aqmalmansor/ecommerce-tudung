@@ -2,16 +2,16 @@ import { ReactNode } from "react";
 
 import { AuthGuard } from "@/components/core";
 import { SidebarInset } from "@/components/ui";
-import { AdminSidebar } from "@/components/common";
+import { ClientSidebar } from "@/components/common";
 
-const AdminLayout = ({ children }: { children: ReactNode }) => {
+const ClientLayout = ({ children }: { children: ReactNode }) => {
   return (
     <AuthGuard>
-      <AdminSidebar>
+      <ClientSidebar>
         <SidebarInset>{children}</SidebarInset>
-      </AdminSidebar>
+      </ClientSidebar>
     </AuthGuard>
   );
 };
 
-export default AdminLayout;
+export default ClientLayout;

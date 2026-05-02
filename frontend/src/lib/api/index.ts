@@ -44,8 +44,8 @@ export const ApiClient = ky.create({
     ],
     afterResponse: [
       async (_request, _options, response) => {
-        if (response.status === 401) {
-          if (window) window.location.href = "/sign-in";
+        if (response.status === 401 && typeof window !== "undefined") {
+          window.location.href = "/sign-in";
         }
         return response;
       },
@@ -55,7 +55,7 @@ export const ApiClient = ky.create({
 
 const BaseApiClient = (): {
   [K in BaseApiMethods]: <T>(
-    baseApiAttributes: BaseApiAttributes
+    baseApiAttributes: BaseApiAttributes,
   ) => Promise<T>;
 } => {
   const buildOptions = (attrs: BaseApiAttributes) => {
@@ -79,43 +79,45 @@ const BaseApiClient = (): {
     return options;
   };
 
+  const parseJson = async <T>(response: Response): Promise<T> => {
+    const ct = response.headers.get("content-type") ?? "";
+    if (!ct.includes("application/json") && response.status === 204) {
+      return undefined as T;
+    }
+    const text = await response.text();
+    if (!text) return undefined as T;
+    return JSON.parse(text) as T;
+  };
+
   return {
     get: async <T>(attrs: BaseApiAttributes): Promise<T> => {
       const response = await ApiClient.get<T>(attrs.path, buildOptions(attrs));
-
-      const data = (await response.json()) as T;
-
+      const data = await parseJson<T>(response);
       if (!response.ok) throw data;
       return data;
     },
     post: async <T>(attrs: BaseApiAttributes): Promise<T> => {
       const response = await ApiClient.post(attrs.path, buildOptions(attrs));
-      const data = (await response.json()) as T;
-
+      const data = await parseJson<T>(response);
       if (!response.ok) throw data;
-
       return data;
     },
     patch: async <T>(attrs: BaseApiAttributes): Promise<T> => {
       const response = await ApiClient.patch<T>(
         attrs.path,
-        buildOptions(attrs)
+        buildOptions(attrs),
       );
-      const data = (await response.json()) as T;
-
+      const data = await parseJson<T>(response);
       if (!response.ok) throw data;
-
       return data;
     },
     delete: async <T>(attrs: BaseApiAttributes): Promise<T> => {
       const response = await ApiClient.delete<T>(
         attrs.path,
-        buildOptions(attrs)
+        buildOptions(attrs),
       );
-      const data = (await response.json()) as T;
-
+      const data = await parseJson<T>(response);
       if (!response.ok) throw data;
-
       return data;
     },
     all: async <T>() => Promise.resolve() as Promise<T>,

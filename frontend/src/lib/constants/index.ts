@@ -3,6 +3,8 @@ export const A_MINUTE = 60 * A_SECOND;
 export const AN_HOUR = 60 * A_MINUTE;
 export const A_DAY = 24 * AN_HOUR;
 
+export const MOBILE_BREAKPOINT = 768;
+
 export const ENV = {
   BASE_URL: process.env.NEXT_PUBLIC_BASE_URL!,
   API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL!,
@@ -27,3 +29,5 @@ export const ERROR_NAME = {
 export const URL_QUERY_KEY = {
   FROM: "from",
 };
+
+export * from "./metadata";

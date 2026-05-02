@@ -1,11 +1,7 @@
 package handlers
 
 import (
-	"crypto/rand"
-	"encoding/hex"
-	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"be/config"
@@ -78,7 +74,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	refreshToken, err := generateRefreshToken()
+	refreshToken, err := generateRefreshToken(user.ID, user.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token"})
 		return
@@ -122,7 +118,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	refreshToken, err := generateRefreshToken()
+	refreshToken, err := generateRefreshToken(user.ID, user.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token"})
 		return
@@ -177,33 +173,52 @@ func generateJWT(userID uint, email string) (string, error) {
 	return token.SignedString([]byte(config.JWT_SECRET))
 }
 
-func generateRefreshToken() (string, error) {
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
+func generateRefreshToken(userID uint, email string) (string, error) {
+	claims := jwt.MapClaims{
+		"user_id": userID,
+		"email":   email,
+		"exp":     time.Now().Add(30 * 24 * time.Hour).Unix(),
 	}
-	return hex.EncodeToString(bytes), nil
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(config.JWT_SECRET))
 }
 
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
-
-	body, _ := c.GetRawData()
-
-	c.Request.Body = io.NopCloser(strings.NewReader(string(body)))
-
-	userID, userExists := c.MustGet(config.JWT_CLAIMS_KEY_USER_ID).(uint)
-	email, emailExists := c.MustGet(config.JWT_CLAIMS_KEY_EMAIL).(string)
-
-	if !userExists || !emailExists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
 	var req RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	token, err := jwt.Parse(req.RefreshToken, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return []byte(config.JWT_SECRET), nil
+	})
+	if err != nil || !token.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+		return
+	}
+
+	userIDFloat, ok := claims["user_id"].(float64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+		return
+	}
+	email, ok := claims["email"].(string)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+		return
+	}
+
+	userID := uint(userIDFloat)
 
 	newAccessToken, err := generateJWT(userID, email)
 	if err != nil {
@@ -211,7 +226,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	newRefreshToken, err := generateRefreshToken()
+	newRefreshToken, err := generateRefreshToken(userID, email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token"})
 		return

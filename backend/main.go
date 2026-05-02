@@ -23,6 +23,8 @@ func main() {
 
 	r := gin.Default()
 
+	r.SetTrustedProxies(nil)
+
 	r.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", config.CLIENT_URL)
 		c.Header("Access-Control-Allow-Credentials", "true")
@@ -38,6 +40,7 @@ func main() {
 	})
 
 	authHandler := handlers.NewAuthHandler(db)
+	productHandler := handlers.NewProductHandler(db)
 
 	api := r.Group("/api")
 	{
@@ -79,6 +82,23 @@ func main() {
 		protected.Use(middleware.AuthMiddleware())
 		{
 			protected.GET("/user/profile", authHandler.GetProfile)
+		}
+
+		products := api.Group("/products")
+		{
+			products.GET("", productHandler.ListProducts)
+			products.GET("/:id", productHandler.GetProduct)
+
+			admin := products.Group("")
+			admin.Use(middleware.AuthMiddleware(), middleware.RequireAdmin(db))
+			{
+				admin.POST("", productHandler.CreateProduct)
+				admin.PUT("/:id", productHandler.UpdateProduct)
+				admin.DELETE("/:id", productHandler.DeleteProduct)
+				admin.POST("/:id/variants", productHandler.AddVariant)
+				admin.PUT("/:id/variants/:variantId", productHandler.UpdateVariant)
+				admin.DELETE("/:id/variants/:variantId", productHandler.DeleteVariant)
+			}
 		}
 	}
 

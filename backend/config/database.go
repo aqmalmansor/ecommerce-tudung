@@ -20,7 +20,14 @@ func ConnectDatabase() (*gorm.DB, error) {
 }
 
 func MigrateDatabase(db *gorm.DB) error {
-	err := db.AutoMigrate(&models.User{})
+	err := db.AutoMigrate(
+		&models.User{},
+		&models.Product{},
+		&models.ProductOption{},
+		&models.ProductOptionValue{},
+		&models.ProductVariant{},
+		&models.ProductImage{},
+	)
 	if err != nil {
 		return err
 	}
